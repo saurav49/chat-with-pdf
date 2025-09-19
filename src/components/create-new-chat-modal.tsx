@@ -9,10 +9,24 @@ import {
 } from "@/components/ui/dialog";
 import { FileUpload } from "./file-upload";
 import { Upload } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export function CreateNewChatModal() {
   const [open, setOpen] = useState(false);
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.ctrlKey && e.shiftKey && e.key.toLocaleLowerCase() === "o") {
+        e.preventDefault();
+        setOpen(true);
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>

@@ -3,6 +3,9 @@ module.exports = {
   darkMode: false, // or 'media' or 'class'
   theme: {
     extend: {
+      colors: {
+        accent: "#192236",
+      },
       animation: {
         shimmer: "shimmer 2s linear infinite",
       },

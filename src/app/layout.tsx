@@ -5,6 +5,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
+import { AppSidebarWrapper } from "@/components/app-sidebar-wrapper";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -22,8 +23,8 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.className} antialiased`}>
         <SidebarProvider>
-          <AppSidebar />
-          <main>
+          <AppSidebarWrapper />
+          <main className="w-full h-screen">
             <SidebarTrigger className="fixed z-[10] top-[11px] left-2" />
             <ThemeProvider
               attribute="class"

@@ -1,5 +1,3 @@
-import { Calendar, Home, Inbox, Search, Settings } from "lucide-react";
-
 import {
   Sidebar,
   SidebarContent,
@@ -9,40 +7,25 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { CreateNewChatModal } from "./create-new-chat-modal";
+import ChatInstance from "./chat-instance";
 
-// Menu items.
-const items = [
-  {
-    title: "Home",
-    url: "#",
-    icon: Home,
-  },
-  {
-    title: "Inbox",
-    url: "#",
-    icon: Inbox,
-  },
-  {
-    title: "Calendar",
-    url: "#",
-    icon: Calendar,
-  },
-  {
-    title: "Search",
-    url: "#",
-    icon: Search,
-  },
-  {
-    title: "Settings",
-    url: "#",
-    icon: Settings,
-  },
-];
+export interface ChatType {
+  id: number;
+  chatId: number;
+  collectionName: string;
+  fileName: string;
+  mimeType: string;
+  size: number;
+  createdAt: Date;
+}
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  data: ChatType[];
+}
+
+export async function AppSidebar({ data }: AppSidebarProps) {
   return (
     <Sidebar>
       <SidebarContent>
@@ -53,15 +36,8 @@ export function AppSidebar() {
           <CreateNewChatModal />
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <a href={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+              {data.map((chat) => (
+                <ChatInstance chat={chat} key={chat.id} />
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
