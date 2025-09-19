@@ -10,7 +10,6 @@ import {
 import { FileUpload } from "./file-upload";
 import { Upload } from "lucide-react";
 import { useEffect, useState } from "react";
-import TooltipWrapper from "./tooltip-wrapper";
 
 export function CreateNewChatModal() {
   const [open, setOpen] = useState(false);
