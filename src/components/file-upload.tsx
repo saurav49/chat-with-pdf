@@ -1,17 +1,23 @@
 "use client";
-import { PDFFile } from "@/types/types";
 import { Upload, AlertCircle, FileText, X } from "lucide-react";
-import { useState, useCallback } from "react";
+import { useState, useCallback, Dispatch, SetStateAction } from "react";
 import { useDropzone } from "react-dropzone";
 import { Alert, AlertDescription } from "./ui/alert";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
 import axios from "axios";
+import { ClipLoader } from "react-spinners";
+import { toast } from "sonner";
 
-const FileUpload = () => {
+const FileUpload = ({
+  setOpen,
+}: {
+  setOpen: Dispatch<SetStateAction<boolean>>;
+}) => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [progressMeter, setProgressMeter] = useState(0);
 
   const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: any[]) => {
     setError(null);
@@ -51,11 +57,6 @@ const FileUpload = () => {
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleUploadedFile = async (files: PDFFile[]) => {
-    const r = await axios.post("http://localhost:3000/api/ingest-pdf", {});
-    console.log(r);
-  };
-
   const handleUpload = async () => {
     if (selectedFiles.length === 0) return;
 
@@ -64,16 +65,31 @@ const FileUpload = () => {
 
     try {
       // Create PDF file objects with URLs for preview
-      const pdfFiles: PDFFile[] = selectedFiles.map((file) => ({
-        id: `pdf-${Date.now()}-${Math.random()}`,
-        name: file.name.replace(".pdf", ""),
-        file,
-        url: URL.createObjectURL(file),
-      }));
-
-      handleUploadedFile(pdfFiles);
-      setSelectedFiles([]);
+      const formData = new FormData();
+      selectedFiles.forEach((file) => {
+        formData.append("file", file, file.name);
+      });
+      const r = await axios.post(
+        "http://localhost:3000/api/ingest-pdf",
+        formData,
+        {
+          onUploadProgress(e) {
+            if (e.total) {
+              const progress = Math.round((e.loaded / e.total) * 100);
+              setProgressMeter(progress);
+            }
+          },
+          timeout: 1000 * 60 * 5, // 5 minutes
+        }
+      );
+      console.log({ r });
+      if (r.status === 200) {
+        toast.success(r?.data?.text || "Pdf embedded successfully");
+        setSelectedFiles([]);
+        setOpen(false);
+      }
     } catch (err) {
+      console.error(err);
       setError("Failed to process files. Please try again.");
     } finally {
       setIsProcessing(false);
@@ -156,19 +172,27 @@ const FileUpload = () => {
         )}
 
         {/* Upload Button */}
-        {selectedFiles.length > 0 && (
-          <Button
-            onClick={handleUpload}
-            disabled={isProcessing}
-            className="w-full"
-          >
-            {isProcessing
-              ? "Processing..."
-              : `Upload ${selectedFiles.length} file${
-                  selectedFiles.length > 1 ? "s" : ""
-                }`}
-          </Button>
-        )}
+        <Button
+          onClick={handleUpload}
+          disabled={isProcessing || selectedFiles.length === 0}
+          className="w-full"
+        >
+          {isProcessing ? (
+            <>
+              <ClipLoader size={12} />
+              <span>Processing</span>
+              {progressMeter > 0 && <span>{progressMeter}%</span>}
+            </>
+          ) : (
+            `Upload ${
+              selectedFiles.length > 0
+                ? `${selectedFiles.length} file ${
+                    selectedFiles.length > 1 ? "s" : ""
+                  }`
+                : ``
+            }`
+          )}
+        </Button>
       </CardContent>
     </Card>
   );
