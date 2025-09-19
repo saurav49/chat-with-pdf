@@ -3,14 +3,14 @@ import React from "react";
 import { SidebarMenuButton, SidebarMenuItem } from "./ui/sidebar";
 import { ChatType } from "./app-sidebar";
 import { usePathname } from "next/navigation";
-import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+import TooltipWrapper from "./tooltip-wrapper";
 
 function ChatInstance({ chat }: { chat: ChatType }) {
   const pathname = usePathname();
   const chatId = pathname.split("/chat/")[1];
   return (
-    <Tooltip>
-      <TooltipTrigger>
+    <TooltipWrapper
+      trigger={
         <SidebarMenuItem
           key={chat.id}
           className={`${
@@ -29,11 +29,9 @@ function ChatInstance({ chat }: { chat: ChatType }) {
             </a>
           </SidebarMenuButton>
         </SidebarMenuItem>
-      </TooltipTrigger>
-      <TooltipContent>
-        <span className="text-xs">{chat.fileName}</span>
-      </TooltipContent>
-    </Tooltip>
+      }
+      content={<span className="text-xs">{chat.fileName}</span>}
+    />
   );
 }
 

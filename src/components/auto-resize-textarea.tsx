@@ -3,8 +3,13 @@
 import * as React from "react";
 import { Textarea } from "@/components/ui/textarea";
 
-export function AutoResizeTextarea() {
-  const [userQuery, setUserQuery] = React.useState("");
+export function AutoResizeTextarea({
+  userQuery,
+  setUserQuery,
+}: {
+  userQuery: string;
+  setUserQuery: React.Dispatch<React.SetStateAction<string>>;
+}) {
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
   const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
