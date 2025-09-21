@@ -15,6 +15,13 @@
       "when": 1758193941697,
       "tag": "0001_small_scarecrow",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1758381547588,
+      "tag": "0002_gigantic_kree",
+      "breakpoints": true
     }
   ]
 }

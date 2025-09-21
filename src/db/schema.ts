@@ -1,6 +1,12 @@
 import { relations } from "drizzle-orm";
-import { integer, serial, timestamp } from "drizzle-orm/pg-core";
+import { integer, pgEnum, serial, timestamp } from "drizzle-orm/pg-core";
 import { pgTable, text } from "drizzle-orm/pg-core";
+
+export const messageRole = pgEnum("message_role", [
+  "user",
+  "assistant",
+  "system",
+]);
 
 export const chat = pgTable("chat", {
   id: serial("id").primaryKey(),
@@ -15,9 +21,8 @@ export const message = pgTable("message", {
   chatId: integer("chat_id")
     .references(() => chat.id, { onDelete: "cascade" })
     .notNull(),
-  user_query: text("user_query").notNull(),
-  llm_response: text("llm_response").notNull(),
-
+  content: text("content").notNull(),
+  role: messageRole("role").default("user").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

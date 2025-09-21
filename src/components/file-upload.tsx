@@ -70,7 +70,7 @@ const FileUpload = ({
         formData.append("file", file, file.name);
       });
       const r = await axios.post(
-        "http://localhost:3000/api/ingest-pdf",
+        `${process.env.NEXT_PUBLIC_BASE_URL}/ingest-pdf`,
         formData,
         {
           onUploadProgress(e) {
@@ -82,7 +82,6 @@ const FileUpload = ({
           timeout: 1000 * 60 * 5, // 5 minutes
         }
       );
-      console.log({ r });
       if (r.status === 200) {
         toast.success(r?.data?.text || "Pdf embedded successfully");
         setSelectedFiles([]);

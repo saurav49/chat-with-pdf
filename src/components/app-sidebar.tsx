@@ -5,20 +5,14 @@ import {
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { CreateNewChatModal } from "./create-new-chat-modal";
 import ChatInstance from "./chat-instance";
 
 export interface ChatType {
   id: number;
-  chatId: number;
-  collectionName: string;
-  fileName: string;
-  mimeType: string;
-  size: number;
-  createdAt: Date;
+  name: string;
+  updatedAt: Date;
 }
 
 interface AppSidebarProps {

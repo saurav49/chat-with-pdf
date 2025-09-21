@@ -22,15 +22,15 @@ function ChatInstance({ chat }: { chat: ChatType }) {
             className="hover:bg-accent hover:text-white"
           >
             <a
-              href={`http://localhost:3000/chat/${chat.chatId}`}
+              href={`http://localhost:3000/chat/${chat.id}`}
               className="text-sm"
             >
-              <span>{chat.fileName}</span>
+              <span>{chat.name}</span>
             </a>
           </SidebarMenuButton>
         </SidebarMenuItem>
       }
-      content={<span className="text-xs">{chat.fileName}</span>}
+      content={<span className="text-xs">{chat.name}</span>}
     />
   );
 }

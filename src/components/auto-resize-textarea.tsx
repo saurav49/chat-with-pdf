@@ -12,7 +12,7 @@ export function AutoResizeTextarea({
 }) {
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
-  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  function handleInput(e: React.ChangeEvent<HTMLTextAreaElement>) {
     const textarea = textareaRef.current;
     if (!textarea) return;
 
@@ -20,8 +20,7 @@ export function AutoResizeTextarea({
 
     const newHeight = Math.min(textarea.scrollHeight, 200);
     textarea.style.height = newHeight + "px";
-  };
-
+  }
   return (
     <Textarea
       ref={textareaRef}
@@ -34,7 +33,7 @@ export function AutoResizeTextarea({
         height: "80px",
         maxHeight: "200px",
         resize: "none",
-        overflow: "auto", // adds scrollbar if content > 120px
+        overflow: "auto",
       }}
     />
   );
