@@ -34,7 +34,12 @@ export function CreateNewChatModal() {
           New Chat
         </button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent
+        className="sm:max-w-md"
+        onInteractOutside={(e) => {
+          e.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-x-2">
             <Upload className="h-5 w-5" />

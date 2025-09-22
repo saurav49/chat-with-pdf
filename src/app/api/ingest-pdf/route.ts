@@ -1,11 +1,20 @@
 // app/api/ingest-pdf/route.ts
 import { NextResponse } from "next/server";
-import { WebPDFLoader } from "@langchain/community/document_loaders/web/pdf";
-import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
-import { OpenAIEmbeddings } from "@langchain/openai";
-import { QdrantVectorStore } from "@langchain/qdrant";
 import { db } from "@/db/drizzle";
-import { chat, message, doc } from "@/db/schema";
+import { chat, doc } from "@/db/schema";
+import path from "path";
+import fs from "fs/promises";
+import { Queue } from "bullmq";
+import IORedis from "ioredis";
+
+const connection = new IORedis(
+  process.env.REDIS_URL || "redis://127.0.0.1:6379",
+  {
+    maxRetriesPerRequest: null,
+  }
+);
+
+const fileQueue = new Queue("file-ingest", { connection });
 
 function createCollectionName(chatId: number, name: string) {
   const base = name.replace(/[a-z0-9_\-]/gi, "_");
@@ -43,13 +52,18 @@ export async function POST(request: Request) {
     }
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    const blob = new Blob([buffer], {
-      type: "application/pdf",
-    });
 
     const fileName = file
       ? (file as File).name
       : `upload_${new Date().getTime()}.pdf`;
+    const uploadsDir = path.join(process.cwd(), "uploads");
+    await fs.mkdir(uploadsDir, {
+      recursive: true,
+    });
+
+    const savedFileName = `${Date.now()}-${fileName}`;
+    const savedFilePathName = path.join(uploadsDir, savedFileName);
+    await fs.writeFile(savedFilePathName, buffer);
 
     const createdChat = await db
       .insert(chat)
@@ -73,37 +87,18 @@ export async function POST(request: Request) {
       .returning({ id: doc.id });
     const docId = createdDoc[0].id;
 
-    const loader = new WebPDFLoader(blob, {});
-    const docs = await loader.load();
-
-    const textSplitter = new RecursiveCharacterTextSplitter({
-      chunkSize: 1000,
-      chunkOverlap: 200,
-    });
-    const splitDocs = await textSplitter.splitDocuments(docs);
-
-    const docsWithMetadata = splitDocs.map((doc, idx) => ({
-      pageContent: doc.pageContent,
-      metadata: {
-        chatId: chatId,
-        docId: docId,
-        chunkIndex: idx,
-      },
-    }));
-
-    const embeddings = new OpenAIEmbeddings({
-      apiKey: process.env.OPENAI_API_KEY,
-      model: "text-embedding-3-small",
-    });
-
-    const vectorStore = await QdrantVectorStore.fromExistingCollection(
-      embeddings,
-      {
-        url: process.env.QDRANT_URL,
-        collectionName: collectionName,
-      }
+    await fileQueue.add(
+      "ingest-pdf",
+      JSON.stringify({
+        filePath: savedFilePathName,
+        chatId,
+        collectionName,
+        fileName,
+        docId,
+        mimeType: file.type || "application/pdf",
+        size: (file as File)?.size ?? buffer?.length,
+      })
     );
-    await vectorStore.addDocuments(docsWithMetadata);
   } catch (err) {
     console.error("POST /api/ingest-pdf error:", err);
     return NextResponse.json(
