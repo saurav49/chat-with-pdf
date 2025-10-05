@@ -6,6 +6,35 @@ import { QdrantVectorStore } from "@langchain/qdrant";
 import { systemPrompt } from "@/lib/utils";
 import { eq, desc } from "drizzle-orm";
 
+function formatParsedLLM(parsed: any): string {
+  if (!parsed) return "";
+
+  if (typeof parsed === "string") return parsed;
+
+  if (typeof parsed.answer === "string") return parsed.answer;
+
+  if (Array.isArray(parsed.steps)) {
+    const mdSteps = parsed.steps
+      .map((s: any, i: number) => {
+        const title = s.step ?? `Step ${i + 1}`;
+        const desc = s.description ? `\n\n${s.description}\n\n` : "\n\n";
+        const code = s.code ? `\`\`\`javascript\n${s.code}\n\`\`\`\n\n` : "";
+        return `### ${i + 1}. ${title}\n\n${desc}${code}`;
+      })
+      .join("\n");
+
+    const note = parsed.note ? `---\n\n${parsed.note}\n` : "";
+    return `${mdSteps}\n${note}`.trim();
+  }
+
+  if (typeof parsed.note === "string") return parsed.note;
+  try {
+    return "```\n" + JSON.stringify(parsed, null, 2) + "\n```";
+  } catch {
+    return String(parsed);
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const data = (await request.json()) as {
@@ -77,7 +106,13 @@ export async function POST(request: Request) {
       },
       ...userQueries,
     ]);
-    const llmR = JSON.parse(llmResponse.content as string)?.answer;
+    let res;
+    try {
+      res = JSON.parse(llmResponse.content as string);
+    } catch {
+      res = llmResponse.content;
+    }
+    const llmR = formatParsedLLM(res);
     const llmMsg = await db
       .insert(message)
       .values({

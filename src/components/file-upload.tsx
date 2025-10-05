@@ -8,12 +8,14 @@ import { Card, CardContent } from "./ui/card";
 import axios from "axios";
 import { ClipLoader } from "react-spinners";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 const FileUpload = ({
   setOpen,
 }: {
   setOpen: Dispatch<SetStateAction<boolean>>;
 }) => {
+  const router = useRouter();
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -86,6 +88,8 @@ const FileUpload = ({
         toast.success(r?.data?.text || "Pdf embedded successfully");
         setSelectedFiles([]);
         setOpen(false);
+        console.log(`Refreshing current route...`);
+        router.refresh();
       }
     } catch (err) {
       console.error(err);

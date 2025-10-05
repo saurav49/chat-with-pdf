@@ -14,7 +14,7 @@ function systemPrompt(relevantChunks: string) {
     Rules:
     1. Follow the strict JSON output as per Output schema.
     2. First, check if the answer can be found in the provided context
-    3. If the context doesnt contain the answer, use your general knowledge to answer
+    3. If the context doesnt contain the answer, give a generic message that the user query is out of scope
     
     context:
     ${relevantChunks}

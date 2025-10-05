@@ -24,26 +24,30 @@ function ChatFormWrapper({
   const isDisabledBtn = userQuery.length === 0;
   async function handleSubmitButton(e: any) {
     e.preventDefault();
+    setIsLoading(true);
+    const message: MessageProps & { collectionName: string } = {
+      chatId: chatId,
+      content: userQuery,
+      role: "user",
+      collectionName:
+        chatSession && Array.isArray(chatSession?.messages)
+          ? chatSession.docs[0]?.collectionName
+          : ``,
+    };
     try {
-      setIsLoading(true);
+      setUserQuery("");
+      setChatSession((prevState) =>
+        prevState
+          ? {
+              ...prevState,
+              messages: [...prevState.messages, message],
+            }
+          : null
+      );
       if (chatSession && Array.isArray(chatSession?.messages)) {
-        const message: MessageProps & { collectionName: string } = {
-          chatId: chatId,
-          content: userQuery,
-          role: "user",
-          collectionName: chatSession.docs[0]?.collectionName,
-        };
         const r = await axios.post(
           `${process.env.NEXT_PUBLIC_BASE_URL}/message/add`,
           message
-        );
-        setChatSession((prevState) =>
-          prevState
-            ? {
-                ...prevState,
-                messages: [...prevState.messages, message],
-              }
-            : null
         );
         if (r?.data?.data?.id) {
           setChatSession((prevState) =>
@@ -66,8 +70,17 @@ function ChatFormWrapper({
         }
         router.refresh();
       }
-      setUserQuery("");
     } catch (e) {
+      setChatSession((prevState) =>
+        prevState
+          ? {
+              ...prevState,
+              messages: prevState.messages.filter(
+                (m) => m.chatId !== message.chatId
+              ),
+            }
+          : null
+      );
     } finally {
       setIsLoading(false);
     }
