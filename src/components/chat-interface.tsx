@@ -9,8 +9,6 @@ import "highlight.js/styles/github.css";
 
 import { ChatSessionProps } from "@/app/chat/[chatId]/page";
 
-/* ---------------- Helpers ---------------- */
-
 function getTextFromChildren(children: any): string {
   if (children == null) return "";
   if (typeof children === "string") return children;
@@ -58,7 +56,6 @@ function preprocessContent(raw: unknown): string {
 
   let text = String(raw);
 
-  // If content is wrapped in triple backticks and contains JSON, extract inner content
   const fencedMatch = text.match(/^```(?:\w*\n)?([\s\S]*?)```$/m);
   let inner = fencedMatch ? fencedMatch[1].trim() : text.trim();
 
@@ -75,8 +72,6 @@ function preprocessContent(raw: unknown): string {
     }
   }
 }
-
-/* --------------- CodeBlock UI -------------- */
 
 type CodeBlockProps = {
   inline?: boolean;
@@ -157,8 +152,6 @@ const CodeBlock: React.FC<CodeBlockProps> = ({
     </code>
   );
 };
-
-/* --------------- Chat Interface -------------- */
 
 export function ChatInterface({
   chatSession,
