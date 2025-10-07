@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
@@ -8,6 +8,9 @@ import rehypeSanitize from "rehype-sanitize";
 import "highlight.js/styles/github.css";
 
 import { ChatSessionProps } from "@/app/chat/[chatId]/page";
+import { CheckCheck, CopyIcon } from "lucide-react";
+import TooltipWrapper from "./tooltip-wrapper";
+import { Button } from "./ui/button";
 
 function getTextFromChildren(children: any): string {
   if (children == null) return "";
@@ -90,7 +93,6 @@ const CodeBlock: React.FC<CodeBlockProps> = ({
   const match = /language-(\w+)/.exec(className || "");
   const lang = match ? match[1] : "";
 
-  // local state: allow editing and show updated code inside UI (but we still render the <pre><code> for highlighting)
   const [codeValue, _] = useState(initial);
   const [copied, setCopied] = useState(false);
 
@@ -104,7 +106,6 @@ const CodeBlock: React.FC<CodeBlockProps> = ({
     }
   };
 
-  // Non-inline -> render editor-like card
   if (!inline) {
     return (
       <div className="my-4">
@@ -142,7 +143,6 @@ const CodeBlock: React.FC<CodeBlockProps> = ({
     );
   }
 
-  // inline code fallback (small pill)
   return (
     <code
       className="rounded px-1 py-[0.08rem] bg-slate-700 text-sm font-mono"
@@ -158,16 +158,34 @@ export function ChatInterface({
 }: {
   chatSession: ChatSessionProps | null;
 }) {
+  const [selectedChat, setSelectedChat] = useState<string | undefined>(
+    undefined
+  );
+  const [copied, setCopied] = useState(false);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+
   if (!chatSession) return null;
 
-  const bottomRef = useRef<HTMLDivElement | null>(null);
-  const lastKnownId =
-    Array.isArray(chatSession?.messages) && chatSession?.messages.length > 0
-      ? chatSession.messages[chatSession.messages.length - 1]?.chatId
-      : null;
+  const onCopy = async (content: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1400);
+    } catch (e) {
+      console.error("copy failed", e);
+    }
+  };
+  const lastKnownChatContent = useMemo(
+    () =>
+      Array.isArray(chatSession?.messages) && chatSession?.messages.length > 0
+        ? chatSession.messages[chatSession.messages.length - 1]?.content
+        : null,
+    [chatSession]
+  );
 
   useEffect(() => {
     const t = setTimeout(() => {
+      console.log(`here`);
       if (bottomRef?.current) {
         bottomRef?.current.scrollIntoView({
           behavior: "smooth",
@@ -184,7 +202,7 @@ export function ChatInterface({
     return () => {
       clearTimeout(t);
     };
-  }, [lastKnownId]);
+  }, [lastKnownChatContent]);
 
   return (
     <div
@@ -196,34 +214,67 @@ export function ChatInterface({
             const contentToRender = preprocessContent(d.content);
 
             return (
-              <div key={d.id} className="my-2">
-                {d.role === "user" ? (
-                  <div className="[&_div]:rounded-md [&_div]:bg-accent [&_div]:w-fit [&_div]:px-4 [&_div]:py-3 flex items-center justify-end my-2">
-                    <div>
-                      <span className="text-sm text-white">{d.content}</span>
+              <div
+                key={d.id}
+                className="my-2 py-3 relative"
+                onMouseOver={() => setSelectedChat(d.id)}
+                onMouseOut={() => setSelectedChat(undefined)}
+              >
+                <>
+                  {d.role === "user" ? (
+                    <div className="[&_div]:rounded-md [&_div]:bg-accent [&_div]:w-fit [&_div]:px-4 [&_div]:py-3 flex  items-end my-2  flex-col">
+                      <div>
+                        <span className="text-sm text-white">{d.content}</span>
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  <div className="rounded-md text-white flex items-start justify-start px-4 py-3 my-2">
-                    <div className="prose prose-invert max-w-full ">
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        rehypePlugins={[rehypeHighlight, rehypeSanitize]}
-                        components={{
-                          // use the editor-like CodeBlock for code nodes
-                          code: CodeBlock,
-                          a: ({ node, ...props }) => (
-                            <a
-                              {...props}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="underline"
-                            />
-                          ),
-                        }}
-                      >
-                        {contentToRender}
-                      </ReactMarkdown>
+                  ) : (
+                    <div className="rounded-md text-white flex items-start justify-start px-4 py-3 my-2">
+                      <div className="prose prose-invert max-w-full ">
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          rehypePlugins={[rehypeHighlight, rehypeSanitize]}
+                          components={{
+                            // use the editor-like CodeBlock for code nodes
+                            code: CodeBlock,
+                            a: ({ node, ...props }) => (
+                              <a
+                                {...props}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="underline"
+                              />
+                            ),
+                          }}
+                        >
+                          {contentToRender}
+                        </ReactMarkdown>
+                      </div>
+                    </div>
+                  )}
+                </>
+                {selectedChat === d.id && d.role === "user" && (
+                  <div className="flex items-center justify-end absolute top-17 right-0">
+                    <div className="flex items-center gap-x-2">
+                      <TooltipWrapper
+                        trigger={
+                          <Button
+                            variant={"ghost"}
+                            onClick={() => onCopy(d.content)}
+                            className="hover:bg-none"
+                          >
+                            {copied ? (
+                              <CheckCheck size="15" />
+                            ) : (
+                              <CopyIcon size="15" />
+                            )}
+                          </Button>
+                        }
+                        content={
+                          <span className="text-xs">
+                            {copied ? "Copied" : "Copy message"}
+                          </span>
+                        }
+                      />
                     </div>
                   </div>
                 )}

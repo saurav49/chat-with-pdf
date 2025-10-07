@@ -1,10 +1,10 @@
 import { db } from "@/db/drizzle";
 import { message } from "@/db/schema";
-import { NextResponse } from "next/server";
 import { ChatOpenAI, OpenAIEmbeddings } from "@langchain/openai";
 import { QdrantVectorStore } from "@langchain/qdrant";
 import { systemPrompt } from "@/lib/utils";
 import { eq, desc } from "drizzle-orm";
+import { CallbackManager } from "@langchain/core/callbacks/manager";
 
 function formatParsedLLM(parsed: any): string {
   if (!parsed) return "";
@@ -50,19 +50,11 @@ export async function POST(request: Request) {
       .orderBy(desc(message.createdAt))
       .limit(10);
 
-    await db
-      .insert(message)
-      .values({
-        chatId: +data.chatId,
-        content: data.content,
-        role: data.role,
-      })
-      .returning({
-        id: message.id,
-        content: message.content,
-        role: message.role,
-        createdAt: message.createdAt,
-      });
+    await db.insert(message).values({
+      chatId: +data.chatId,
+      content: data.content,
+      role: data.role,
+    });
 
     const embeddings = new OpenAIEmbeddings({
       apiKey: process.env.OPENAI_API_KEY,
@@ -87,10 +79,7 @@ export async function POST(request: Request) {
       )}]`;
       return acc;
     }, "");
-    const llm = new ChatOpenAI({
-      model: process.env.MODEL_NAME,
-      temperature: 0,
-    });
+    const encoder = new TextEncoder();
     const userQueries = existingMessages.map((m) => ({
       role: "user",
       content: m.content,
@@ -99,48 +88,96 @@ export async function POST(request: Request) {
       role: "user",
       content: data.content,
     });
-    const llmResponse = await llm.invoke([
+    const messageForLLM = [
       {
         role: "system",
         content: systemPrompt(relevantChunks),
       },
       ...userQueries,
-    ]);
-    let res;
-    try {
-      res = JSON.parse(llmResponse.content as string);
-    } catch {
-      res = llmResponse.content;
-    }
-    const llmR = formatParsedLLM(res);
-    const llmMsg = await db
-      .insert(message)
-      .values({
-        chatId: +data.chatId,
-        content: llmR as string,
-        role: "assistant",
-      })
-      .returning({
-        id: message.id,
-        role: message.role,
-        content: message.content,
-        chatId: message.chatId,
-      });
-    return NextResponse.json(
-      {
-        ok: true,
-        message: "Message added",
-        data: llmMsg[0],
+    ];
+    const stream = new ReadableStream({
+      async start(controller) {
+        let accumulated = "";
+
+        const chat = new ChatOpenAI({
+          model: process.env.MODEL_NAME,
+          temperature: 0,
+          streaming: true,
+          callbackManager: CallbackManager.fromHandlers({
+            async handleLLMNewToken(token: string) {
+              controller.enqueue(
+                encoder.encode(
+                  JSON.stringify({ type: "token", text: token }) + "\n"
+                )
+              );
+              accumulated += token;
+            },
+            async handleLLMError(err: any) {
+              console.error("LLM error callback:", err);
+              controller.enqueue(
+                encoder.encode(
+                  JSON.stringify({ type: "error", message: String(err) }) + "\n"
+                )
+              );
+            },
+          }),
+        });
+
+        try {
+          await chat.invoke(messageForLLM);
+          let parsedFinal: any = null;
+          try {
+            parsedFinal = JSON.parse(accumulated);
+          } catch {
+            parsedFinal = accumulated;
+          }
+          const formatted = formatParsedLLM(parsedFinal);
+          try {
+            await db.insert(message).values({
+              chatId: +data.chatId,
+              content: formatted,
+              role: "assistant",
+            });
+          } catch (dbErr) {
+            console.error("DB insert failed:", dbErr);
+          }
+          controller.enqueue(
+            encoder.encode(JSON.stringify({ type: "done" }) + "\n")
+          );
+          controller.close();
+        } catch (err) {
+          console.error("Streaming invocation error:", err);
+          controller.enqueue(
+            encoder.encode(
+              JSON.stringify({ type: "error", message: String(err) }) + "\n"
+            )
+          );
+          controller.close();
+        }
       },
-      {
-        status: 201,
-      }
-    );
+      cancel(reason) {
+        console.log("stream cancelled:", reason);
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive",
+      },
+    });
   } catch (err) {
     console.error("POST /api/message/add error:", err);
-    return NextResponse.json(
-      { ok: false, error: "Internal server error" },
-      { status: 500 }
+    return new Response(
+      JSON.stringify({
+        OK: false,
+        error: "Internal server error",
+        status: 500,
+        headers: {
+          "Content-type": "application/json",
+        },
+      })
     );
   }
 }

@@ -88,7 +88,6 @@ const FileUpload = ({
         toast.success(r?.data?.text || "Pdf embedded successfully");
         setSelectedFiles([]);
         setOpen(false);
-        console.log(`Refreshing current route...`);
         router.refresh();
       }
     } catch (err) {
